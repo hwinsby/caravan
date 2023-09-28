@@ -19,41 +19,20 @@ import { Info, Warning, Error } from "@mui/icons-material";
 
 import "./InteractionMessages.css";
 
-class MessagesList extends React.Component {
-  render = () => {
-    const { messages } = this.props;
-    return (
-      <List style={{ maxHeight: "400px", overflow: "auto" }} dense>
-        {messages.map(this.renderMessage)}
-      </List>
-    );
+const MessagesList = ({ messages }) => {
+  const messageIcon = (message) => {
+    switch (message.level) {
+      case INFO:
+        return <Info />;
+      case WARNING:
+        return <Warning />;
+      case ERROR:
+        return <Error />;
+      default:
+        return null;
+    }
   };
-
-  renderMessage = (message, key) => {
-    return (
-      <ListItem key={key}>
-        {message.level && (
-          <ListItemIcon>{this.messageIcon(message)}</ListItemIcon>
-        )}
-        <ListItemText>
-          {this.renderMessageBodyAndSubmessages(message)}
-        </ListItemText>
-      </ListItem>
-    );
-  };
-
-  renderMessageBodyAndSubmessages = (message) => {
-    return (
-      <Box>
-        {this.renderMessageBody(message)}
-        {message.messages && (
-          <List dense>{message.messages.map(this.renderMessage)}</List>
-        )}
-      </Box>
-    );
-  };
-
-  renderMessageBody = (message) => {
+  const renderMessageBody = (message) => {
     return (
       <Box>
         {message.image && (
@@ -70,19 +49,33 @@ class MessagesList extends React.Component {
     );
   };
 
-  messageIcon = (message) => {
-    switch (message.level) {
-      case INFO:
-        return <Info />;
-      case WARNING:
-        return <Warning />;
-      case ERROR:
-        return <Error />;
-      default:
-        return null;
-    }
+  //renderMessageBodyAndSubmessages uses renderMessage and renderMessage uses renderMessageBodyAndSubmessages...
+  //How do we resolve this?
+  const renderMessageBodyAndSubmessages = (message) => {
+    return (
+      <Box>
+        {renderMessageBody(message)}
+        {message.messages && (
+          <List dense>{message.messages.map(renderMessage)}</List>
+        )}
+      </Box>
+    );
   };
-}
+  const renderMessage = (message, key) => {
+    return (
+      <ListItem key={key}>
+        {message.level && <ListItemIcon>{messageIcon(message)}</ListItemIcon>}
+        <ListItemText>{renderMessageBodyAndSubmessages(message)}</ListItemText>
+      </ListItem>
+    );
+  };
+
+  return (
+    <List style={{ maxHeight: "400px", overflow: "auto" }} dense>
+      {messages.map(renderMessage)}
+    </List>
+  );
+};
 
 MessagesList.propTypes = {
   messages: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
