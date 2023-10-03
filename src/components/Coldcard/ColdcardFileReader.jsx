@@ -147,14 +147,22 @@ ColdcardFileReaderBase.defaultProps = {
   isTest: false,
 };
 
-export class ColdcardJSONReader extends ColdcardFileReaderBase {}
-ColdcardJSONReader.defaultProps = {
-  fileType: "JSON",
-  validFileFormats: ".json",
+export const ColdcardJSONReader = (props) => {
+  return (
+    <ColdcardFileReaderBase
+      {...props}
+      fileType="JSON"
+      validFileFormats=".json"
+    />
+  );
 };
 
-export class ColdcardPSBTReader extends ColdcardFileReaderBase {}
-ColdcardPSBTReader.defaultProps = {
-  fileType: "PSBT",
-  validFileFormats: ".psbt",
+export const ColdcardPSBTReader = (props) => {
+  return (
+    <ColdcardFileReaderBase
+      {...props}
+      fileType="PSBT"
+      validFileFormats=".psbt"
+    />
+  );
 };
