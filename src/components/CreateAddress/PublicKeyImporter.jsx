@@ -89,12 +89,12 @@ const PublicKeyImporter = ({
   // Position
   //
 
-  const moveUpEvent = (event) => {
+  const handleMoveUp = (event) => {
     event.preventDefault();
     moveUp(number);
   };
 
-  const moveDownEvent = (event) => {
+  const handleMoveDown = (event) => {
     event.preventDefault();
     moveDown(number);
   };
@@ -166,13 +166,12 @@ const PublicKeyImporter = ({
       return publicKeyError;
     }
 
-    // @winsby: not sure what to do about this...
     const duplicateError =
       publicKey &&
       Object.values(publicKeyImporters).find(
-        (publicKeyImporter, publicKeyImporterIndex) =>
+        (publicKeyImp, publicKeyImporterIndex) =>
           publicKeyImporterIndex !== number - 1 &&
-          publicKeyImporter.publicKey === publicKey
+          publicKeyImp.publicKey === publicKey
       )
         ? "This public key has already been imported."
         : null;
@@ -198,7 +197,7 @@ const PublicKeyImporter = ({
             <Button
               type="button"
               variant="contained"
-              onClick={moveUpEvent}
+              onClick={handleMoveUp}
               disabled={number === 1}
             >
               <ArrowUpward />
@@ -207,7 +206,7 @@ const PublicKeyImporter = ({
             <Button
               type="button"
               variant="contained"
-              onClick={moveDownEvent}
+              onClick={handleMoveDown}
               disabled={number === totalSigners}
             >
               <ArrowDownward />

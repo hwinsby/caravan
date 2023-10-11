@@ -24,8 +24,6 @@ const ExtendedPublicKeyPublicKeyImporter = ({
   const [extendedPublicKeyError, setExtendedPublicKeyError] = useState("");
   const [conversionMessage, setConversionMessage] = useState("");
 
-  // @winsby had to rename this func (previously "impmort") as it was a reserved keyword.
-  // Can you advise on a good name for it? I went with "importData" for now...
   const importData = () => {
     const publicKey = deriveChildPublicKey(
       extendedPublicKey,

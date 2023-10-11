@@ -31,22 +31,22 @@ const QuorumPicker = ({
   setTotalSigners,
 }) => {
   const handleIncrementRequiredSigners = (event) => {
-    setRequiredSigners((prev) => prev + 1);
+    setRequiredSigners(requiredSigners + 1);
     event.preventDefault();
   };
 
   const handleDecrementRequiredSigners = (event) => {
-    setRequiredSigners((prev) => prev - 1);
+    setRequiredSigners(requiredSigners - 1);
     event.preventDefault();
   };
 
   const handleIncrementTotalSigners = (event) => {
-    setTotalSigners((prev) => prev + 1);
+    setTotalSigners(totalSigners + 1);
     event.preventDefault();
   };
 
   const handleDecrementTotalSigners = (event) => {
-    setTotalSigners((prev) => prev - 1);
+    setTotalSigners(totalSigners - 1);
     event.preventDefault();
   };
 

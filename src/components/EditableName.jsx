@@ -43,7 +43,6 @@ const EditableName = ({ name, setName, number }) => {
 
   const renderEditableName = () => {
     if (editing) {
-      // Was the below Form element removed permenantly?
       // <Form onSubmit={this.submit} inline>
       return (
         <Grid container alignItems="center">

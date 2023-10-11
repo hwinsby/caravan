@@ -1,5 +1,5 @@
 // eslint-disable-next-line max-classes-per-file
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import Dropzone from "react-dropzone";
 import { Buffer } from "buffer/";
@@ -21,11 +21,8 @@ const ColdcardFileReaderBase = ({
   onReceive,
   onReceivePSBT,
   setError,
+  fileType = "JSON",
 }) => {
-  // @winsby: How should I initialize this state? OG = fileType: props.fileType || "JSON"
-  // Also this is never set... so.
-  const [fileType, setFileType] = useState("JSON");
-
   const singleAcceptedFile = (acceptedFiles, rejectedFiles) => {
     return rejectedFiles.length === 0 && acceptedFiles.length === 1;
   };

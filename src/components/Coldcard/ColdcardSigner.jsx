@@ -33,18 +33,15 @@ const ColdcardSigner = ({
       ? "P2WSH-P2SH"
       : walletConfig.addressType;
 
-    // @winsby: I've renamed this variable "newInteraction" since it shared a name with the prop "interaction"
-    const newInteraction = ConfigAdapter({
+    const interactionAdapter = ConfigAdapter({
       KEYSTORE: COLDCARD,
       jsonConfig: walletConfig,
     });
-    // @winsby: not sure if this "interaction" is the prop or the new variable defined above, but I'm guessing new variable for now?
-    const body = newInteraction.adapt();
+    const body = interactionAdapter.adapt();
     const filename = `wc-${walletConfig.name}.txt`;
     downloadFile(body, filename);
   };
   const handlePSBTDownloadClick = () => {
-    // @winsby: pretty sure that this "interaction" is from the prop... -hiw
     const body = interaction.request().toBase64();
     const timestamp = moment().format("HHmm");
     const filename = `${timestamp}-${walletName}.psbt`;

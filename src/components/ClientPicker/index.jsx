@@ -65,31 +65,32 @@ const ClientPicker = ({
   };
 
   const handleTypeChange = (event) => {
-    if (event.target.value === "private" && !urlEdited) {
+    const clientType = event.target.value;
+    if (clientType === "private" && !urlEdited) {
       setUrl(`http://localhost:${network === "mainnet" ? 8332 : 18332}`);
     }
-    setType(event.target.value);
+    setType(clientType);
   };
 
   const handleUrlChange = (event) => {
-    // event.target.value = a url
-    const error = validateUrl(event.target.value);
+    const url = event.target.value;
+    const error = validateUrl(url);
     if (!urlEdited && !error) setUrlEdited(true);
-    setUrl(event.target.value);
+    setUrl(url);
     setUrlError(error);
   };
 
   const handleUsernameChange = (event) => {
-    // event.target.value = a username
-    const error = validateUsername(event.target.value);
-    setUsername(event.target.value);
+    const username = event.target.value;
+    const error = validateUsername(username);
+    setUsername(username);
     setUsernameError(error);
   };
 
   const handlePasswordChange = (event) => {
-    // event.target.value = a password
-    const error = validatePassword(event.target.value);
-    setPassword(event.target.value);
+    const password = event.target.value;
+    const error = validatePassword(password);
+    setPassword(password);
     setPasswordError(error);
   };
 

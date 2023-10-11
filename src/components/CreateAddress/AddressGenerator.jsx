@@ -104,19 +104,18 @@ const AddressGenerator = ({
     return `  * ${publicKeyImporter.name}: ${bip32Path}: ${publicKeyImporter.publicKey}`;
   };
 
-  // @winsby: ?? duplicate variable names
   const publicKeyImporterBIP32Paths = () => {
-    const publicKeyImporterBIP32Paths = [];
+    const formattedReturnArray = [];
     for (
       let publicKeyImporterNum = 1;
       publicKeyImporterNum <= totalSigners;
       publicKeyImporterNum += 1
     ) {
-      publicKeyImporterBIP32Paths.push(
+      formattedReturnArray.push(
         publicKeyImporterBIP32Path(publicKeyImporterNum)
       );
     }
-    return publicKeyImporterBIP32Paths.join("\n");
+    return formattedReturnArray.join("\n");
   };
 
   const addressDetailsText = (multisig) => {

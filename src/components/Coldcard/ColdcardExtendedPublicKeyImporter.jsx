@@ -26,8 +26,7 @@ const ColdcardExtendedPublicKeyImporter = ({
   const [coldcardMultisigBIP32Path, setColdcardMultisigBIP32Path] = useState(
     getColdcardBip32Path()
   );
-  // @winsby Do we need a setState func. here?
-  const [extendedPublicKeyError] = useState("");
+  const [extendedPublicKeyError, setExtendedPublicKeyImporter] = useState("");
 
   const resetColdcardBIP32Path = () => {
     validateAndSetBIP32Path(

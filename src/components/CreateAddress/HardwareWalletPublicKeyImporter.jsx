@@ -78,7 +78,6 @@ const HardwareWalletPublicKeyImporter = ({
     );
   };
 
-  // @winsby: I'm confused about this function with the same name as the state... should we chage the name of this function?
   const checkBip32PathError = () => {
     if (bip32PathError !== "") {
       return bip32PathError;

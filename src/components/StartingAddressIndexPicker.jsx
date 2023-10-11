@@ -23,11 +23,9 @@ const StartingAddressIndexPicker = ({
   startingAddressIndex,
   setStartingAddressIndex,
 }) => {
-  // Ask @winsby about these state initiations...
   const [customIndex, setCustomIndex] = useState(startingAddressIndex !== 0);
   const [startingAddressIndexField, setStartingAddressIndexField] =
     useState(startingAddressIndex);
-  // What is the correct state initiation here? Didn't see it in the OG file
   const [startingAddressIndexError, setStartingAddressIndexError] =
     useState("");
 

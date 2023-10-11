@@ -49,8 +49,8 @@ const MessagesList = ({ messages }) => {
     );
   };
 
-  //renderMessageBodyAndSubmessages uses renderMessage and renderMessage uses renderMessageBodyAndSubmessages...
-  //How do we resolve this?
+  // renderMessageBodyAndSubmessages uses renderMessage and renderMessage uses renderMessageBodyAndSubmessages...
+  // How do we resolve this?
   const renderMessageBodyAndSubmessages = (message) => {
     return (
       <Box>
