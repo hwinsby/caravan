@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import {
@@ -40,36 +40,20 @@ import { downloadFile } from "../../utils";
 
 const SPACEBAR_CODE = 32;
 
-class TestRunBase extends React.Component {
-  componentDidMount = () => {
-    document.addEventListener("keydown", this.handleKeyDown);
-  };
-
-  componentWillUnmount = () => {
-    document.removeEventListener("keydown", this.handleKeyDown);
-  };
-
-  handleKeyDown = (event) => {
-    const { status, isLastTest, nextTest } = this.props;
-    if (event.keyCode !== SPACEBAR_CODE) {
-      return;
-    }
-    if (event.target.tagName.toLowerCase() === "textarea") {
-      return;
-    }
-    event.preventDefault();
-    if (status === ACTIVE) {
-      return;
-    }
-    if (status === PENDING) {
-      this.start();
-    } else if (!isLastTest) {
-      nextTest();
-    }
-  };
-
-  handleDownloadPSBTClick = () => {
-    const { test } = this.props;
+const TestRunBase = ({
+  status,
+  isLastTest,
+  nextTest,
+  test,
+  testRunIndex,
+  keystore,
+  resetTestRun,
+  endTestRun,
+  setErrorNotification,
+  startTestRun,
+  message,
+}) => {
+  const handleDownloadPSBTClick = () => {
     const interaction = test.interaction();
     const nameBits = test.name().split(" ");
     const body = interaction.request().toBase64();
@@ -78,8 +62,7 @@ class TestRunBase extends React.Component {
     downloadFile(body, filename);
   };
 
-  handledDownloadWalletConfigClick = () => {
-    const { test } = this.props;
+  const handledDownloadWalletConfigClick = () => {
     const nameBits = test.name().split(" ");
     const name = `${nameBits[2].toLowerCase()}-${nameBits[1][0]}`;
     // FIXME - need to know firmware version and then set P2WSH-P2SH vs P2SH-P2WSH appropriately
@@ -102,111 +85,7 @@ Derivation: ${test.params.derivation}
     downloadFile(output, filename);
   };
 
-  render = () => {
-    const { test, testRunIndex, status, keystore } = this.props;
-    if (!test) {
-      return (
-        <Box>
-          <p>No test selected.</p>
-        </Box>
-      );
-    }
-    return (
-      <Box>
-        <Card>
-          <CardHeader
-            title={test.name()}
-            subheader={`Test ${testRunIndex + 1}`}
-          />
-          <CardContent>
-            {test.description()}
-            {keystore.type === COLDCARD && !test.unsignedTransaction && (
-              <Box align="center">
-                <ColdcardJSONReader
-                  interaction={test.interaction()}
-                  onReceive={this.startParse}
-                  onStart={this.start}
-                  setError={this.reset}
-                  isTest
-                />
-              </Box>
-            )}
-            {keystore.type === COLDCARD && test.unsignedTransaction && (
-              <Box align="center" style={{ marginTop: "2em" }}>
-                <ColdcardSigningButtons
-                  handlePSBTDownloadClick={this.handleDownloadPSBTClick}
-                  handleWalletConfigDownloadClick={
-                    this.handledDownloadWalletConfigClick
-                  }
-                />
-                <ColdcardPSBTReader
-                  interaction={test.interaction()}
-                  onReceivePSBT={this.startParse}
-                  onStart={this.start}
-                  setError={this.reset}
-                  fileType="PSBT"
-                  validFileFormats=".psbt"
-                />
-              </Box>
-            )}
-            {this.renderInteractionMessages()}
-            {status === PENDING &&
-              !Object.values(INDIRECT_KEYSTORES).includes(keystore.type) && (
-                <Box align="center">
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={this.start}
-                  >
-                    Start Test
-                  </Button>
-                </Box>
-              )}
-            {keystore.type === HERMIT &&
-              test.interaction().displayer &&
-              status === PENDING && (
-                <Box align="center">
-                  <HermitDisplayer
-                    width={400}
-                    string={test.interaction().request()}
-                  />
-                </Box>
-              )}
-            {keystore.type === HERMIT && !this.testComplete() && (
-              <Box>
-                <HermitReader
-                  onStart={this.start}
-                  onSuccess={this.resolve}
-                  onClear={this.reset}
-                  startText="Scan Hermit Response"
-                  interaction={test.interaction()}
-                />
-              </Box>
-            )}
-            {this.testComplete() && this.renderResult()}
-
-            <TestRunNote />
-          </CardContent>
-          <CardActions>
-            {status === ACTIVE && (
-              <Button disabled>
-                <CircularProgress />
-                &nbsp; Running test...
-              </Button>
-            )}
-            {this.testComplete() && (
-              <Button variant="text" color="error" onClick={this.reset}>
-                Reset Test
-              </Button>
-            )}
-          </CardActions>
-        </Card>
-      </Box>
-    );
-  };
-
-  testComplete = () => {
-    const { status } = this.props;
+  const testComplete = () => {
     return (
       status === Test.SUCCESS ||
       status === Test.ERROR ||
@@ -214,8 +93,7 @@ Derivation: ${test.params.derivation}
     );
   };
 
-  renderInteractionMessages = () => {
-    const { status, test } = this.props;
+  const renderInteractionMessages = () => {
     if (status === PENDING || status === ACTIVE) {
       return (
         <InteractionMessages
@@ -227,8 +105,7 @@ Derivation: ${test.params.derivation}
     return null;
   };
 
-  renderResult = () => {
-    const { status, message } = this.props;
+  const renderResult = () => {
     switch (status) {
       case Test.SUCCESS:
         return (
@@ -268,43 +145,41 @@ Derivation: ${test.params.derivation}
     }
   };
 
-  start = async () => {
-    const { test, keystore, testRunIndex, startTestRun } = this.props;
-    startTestRun(testRunIndex);
-    if (keystore.type === HERMIT) {
-      return;
-    }
-    const result = await test.run();
-    this.handleResult(result);
-  };
-
-  startParse = async (data) => {
-    const { test, testRunIndex, startTestRun } = this.props;
-    startTestRun(testRunIndex);
-    const result = await test.runParse(data);
-    this.handleResult(result);
-  };
-
-  resolve = (actual) => {
-    const { test } = this.props;
-    const result = test.resolve(test.postprocess(actual));
-    this.handleResult(result);
-  };
-
-  handleResult = (result) => {
-    const { testRunIndex, endTestRun, setErrorNotification } = this.props;
-    if (result.status === Test.ERROR) {
-      setErrorNotification(result.message);
-    }
-    endTestRun(testRunIndex, result.status, this.formatMessage(result));
-  };
-
-  reset = () => {
-    const { testRunIndex, resetTestRun } = this.props;
+  const reset = () => {
     resetTestRun(testRunIndex);
   };
 
-  formatMessage = (result) => {
+  const formatOutput = (output) => {
+    switch (typeof output) {
+      case "object":
+        return JSON.stringify(output);
+      case "string":
+      case "number":
+        return output;
+      default:
+        return "Did not recognize output type";
+    }
+  };
+  const diffSegmentClass = (segment) => {
+    if (segment.added) {
+      return "added";
+    }
+    if (segment.removed) {
+      return "removed";
+    }
+    return "common";
+  };
+  const formatDiffSegment = (segment, i) => {
+    return (
+      <span
+        key={i}
+        className={`TestRun-diff-segment-${diffSegmentClass(segment)}`}
+      >
+        {segment.value}
+      </span>
+    );
+  };
+  const formatMessage = (result) => {
     switch (result.status) {
       case Test.FAILURE:
         return (
@@ -313,13 +188,13 @@ Derivation: ${test.params.derivation}
               <dt>Expected:</dt>
               <dd>
                 <code className="TestRun-wrap">
-                  {this.formatOutput(result.expected)}
+                  {formatOutput(result.expected)}
                 </code>
               </dd>
               <dt>Actual:</dt>
               <dd>
                 <code className="TestRun-wrap">
-                  {this.formatOutput(result.actual)}
+                  {formatOutput(result.actual)}
                 </code>
               </dd>
               {result.diff && (
@@ -327,7 +202,7 @@ Derivation: ${test.params.derivation}
                   <dt>Diff:</dt>
                   <dd>
                     <code className="TestRun-wrap">
-                      {result.diff.map(this.formatDiffSegment)}
+                      {result.diff.map(formatDiffSegment)}
                     </code>
                   </dd>
                 </div>
@@ -341,40 +216,155 @@ Derivation: ${test.params.derivation}
         return "";
     }
   };
-
-  formatOutput = (output) => {
-    switch (typeof output) {
-      case "object":
-        return JSON.stringify(output);
-      case "string":
-      case "number":
-        return output;
-      default:
-        return "Did not recognize output type";
+  const handleResult = (result) => {
+    if (result.status === Test.ERROR) {
+      setErrorNotification(result.message);
     }
+    endTestRun(testRunIndex, result.status, formatMessage(result));
+  };
+  const start = async () => {
+    startTestRun(testRunIndex);
+    if (keystore.type === HERMIT) {
+      return;
+    }
+    const result = await test.run();
+    handleResult(result);
   };
 
-  formatDiffSegment = (segment, i) => {
+  const startParse = async (data) => {
+    startTestRun(testRunIndex);
+    const result = await test.runParse(data);
+    handleResult(result);
+  };
+
+  const resolve = (actual) => {
+    const result = test.resolve(test.postprocess(actual));
+    handleResult(result);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.keyCode !== SPACEBAR_CODE) {
+      return;
+    }
+    if (event.target.tagName.toLowerCase() === "textarea") {
+      return;
+    }
+    event.preventDefault();
+    if (status === ACTIVE) {
+      return;
+    }
+    if (status === PENDING) {
+      start();
+    } else if (!isLastTest) {
+      nextTest();
+    }
+  };
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  });
+  const renderTestRun = () => {
+    if (!test) {
+      return (
+        <Box>
+          <p>No test selected.</p>
+        </Box>
+      );
+    }
     return (
-      <span
-        key={i}
-        className={`TestRun-diff-segment-${this.diffSegmentClass(segment)}`}
-      >
-        {segment.value}
-      </span>
+      <Box>
+        <Card>
+          <CardHeader
+            title={test.name()}
+            subheader={`Test ${testRunIndex + 1}`}
+          />
+          <CardContent>
+            {test.description()}
+            {keystore.type === COLDCARD && !test.unsignedTransaction && (
+              <Box align="center">
+                <ColdcardJSONReader
+                  interaction={test.interaction()}
+                  onReceive={startParse}
+                  onStart={start}
+                  setError={reset}
+                  isTest
+                />
+              </Box>
+            )}
+            {keystore.type === COLDCARD && test.unsignedTransaction && (
+              <Box align="center" style={{ marginTop: "2em" }}>
+                <ColdcardSigningButtons
+                  handlePSBTDownloadClick={handleDownloadPSBTClick}
+                  handleWalletConfigDownloadClick={
+                    handledDownloadWalletConfigClick
+                  }
+                />
+                <ColdcardPSBTReader
+                  interaction={test.interaction()}
+                  onReceivePSBT={startParse}
+                  onStart={start}
+                  setError={reset}
+                  fileType="PSBT"
+                  validFileFormats=".psbt"
+                />
+              </Box>
+            )}
+            {renderInteractionMessages()}
+            {status === PENDING &&
+              !Object.values(INDIRECT_KEYSTORES).includes(keystore.type) && (
+                <Box align="center">
+                  <Button variant="contained" color="primary" onClick={start}>
+                    Start Test
+                  </Button>
+                </Box>
+              )}
+            {keystore.type === HERMIT &&
+              test.interaction().displayer &&
+              status === PENDING && (
+                <Box align="center">
+                  <HermitDisplayer
+                    width={400}
+                    string={test.interaction().request()}
+                  />
+                </Box>
+              )}
+            {keystore.type === HERMIT && !testComplete() && (
+              <Box>
+                <HermitReader
+                  onStart={start}
+                  onSuccess={resolve}
+                  onClear={reset}
+                  startText="Scan Hermit Response"
+                  interaction={test.interaction()}
+                />
+              </Box>
+            )}
+            {testComplete() && renderResult()}
+
+            <TestRunNote />
+          </CardContent>
+          <CardActions>
+            {status === ACTIVE && (
+              <Button disabled>
+                <CircularProgress />
+                &nbsp; Running test...
+              </Button>
+            )}
+            {testComplete() && (
+              <Button variant="text" color="error" onClick={reset}>
+                Reset Test
+              </Button>
+            )}
+          </CardActions>
+        </Card>
+      </Box>
     );
   };
-
-  diffSegmentClass = (segment) => {
-    if (segment.added) {
-      return "added";
-    }
-    if (segment.removed) {
-      return "removed";
-    }
-    return "common";
-  };
-}
+  return renderTestRun();
+};
 
 const mapStateToProps = (state, ownProps) => {
   return {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
@@ -26,17 +26,49 @@ const UP_ARROW_CODE = 38;
 const RIGHT_ARROW_CODE = 39;
 const DOWN_ARROW_CODE = 40;
 
-class TestSuiteRunBase extends React.Component {
-  componentDidMount = () => {
-    document.addEventListener("keydown", this.handleKeyDown);
+const TestSuiteRunBase = ({
+  testSuiteRun,
+  keystore,
+  startTestSuiteRun,
+  setCurrentTestRun,
+}) => {
+  const start = () => {
+    startTestSuiteRun();
   };
 
-  componentWillUnmount = () => {
-    document.removeEventListener("keydown", this.handleKeyDown);
+  const startDisabled = () => {
+    return (
+      keystore.type === "" ||
+      keystore.status === ACTIVE ||
+      testSuiteRun.started ||
+      testSuiteRun.testRuns.length === 0
+    );
   };
 
-  currentTestIsActive = () => {
-    const { testSuiteRun } = this.props;
+  const isFirstTest = () => {
+    return testSuiteRun.currentTestRunIndex === 0;
+  };
+
+  const isLastTest = () => {
+    return (
+      testSuiteRun.currentTestRunIndex === testSuiteRun.testRuns.length - 1
+    );
+  };
+
+  const previousTest = () => {
+    if (testSuiteRun.currentTestRunIndex < 1) {
+      return;
+    }
+    setCurrentTestRun(testSuiteRun.currentTestRunIndex - 1);
+  };
+
+  const nextTest = () => {
+    if (testSuiteRun.currentTestRunIndex === testSuiteRun.testRuns.length - 1) {
+      return;
+    }
+    setCurrentTestRun(testSuiteRun.currentTestRunIndex + 1);
+  };
+  const currentTestIsActive = () => {
     if (!testSuiteRun.started) {
       return false;
     }
@@ -44,34 +76,34 @@ class TestSuiteRunBase extends React.Component {
     if (!test) {
       return false;
     }
+
     return test.status === ACTIVE;
   };
 
-  handleKeyDown = (event) => {
-    const { testSuiteRun } = this.props;
+  const handleKeyDown = (event) => {
     if (testSuiteRun.started) {
-      if (this.currentTestIsActive()) {
+      if (currentTestIsActive()) {
         return;
       }
       switch (event.keyCode) {
         case LEFT_ARROW_CODE:
-          if (!this.isFirstTest()) {
-            this.previousTest();
+          if (!isFirstTest()) {
+            previousTest();
           }
           break;
         case UP_ARROW_CODE:
-          if (!this.isFirstTest()) {
-            this.previousTest();
+          if (!isFirstTest()) {
+            previousTest();
           }
           break;
         case RIGHT_ARROW_CODE:
-          if (!this.isLastTest()) {
-            this.nextTest();
+          if (!isLastTest()) {
+            nextTest();
           }
           break;
         case DOWN_ARROW_CODE:
-          if (!this.isLastTest()) {
-            this.nextTest();
+          if (!isLastTest()) {
+            nextTest();
           }
           break;
         default:
@@ -86,46 +118,14 @@ class TestSuiteRunBase extends React.Component {
         return;
       }
       event.preventDefault();
-      if (this.startDisabled()) {
+      if (startDisabled()) {
         return;
       }
-      this.start();
+      start();
     }
   };
 
-  render = () => {
-    const { testSuiteRun } = this.props;
-    return (
-      <Box mt={2}>
-        {testSuiteRun.started && (
-          <Box mt={2} mb={2}>
-            <LinearProgress
-              variant="determinate"
-              value={
-                100 *
-                (testSuiteRun.testRuns.filter(
-                  (testRun) =>
-                    testRun.status !== PENDING && testRun.status !== ACTIVE
-                ).length /
-                  testSuiteRun.testRuns.length)
-              }
-            />
-          </Box>
-        )}
-        <Grid container spacing={3}>
-          <Grid item md={4}>
-            <TestSuiteRunSummary />
-          </Grid>
-          <Grid item md={8}>
-            {this.renderBody()}
-          </Grid>
-        </Grid>
-      </Box>
-    );
-  };
-
-  renderSetup = () => {
-    const { keystore } = this.props;
+  const renderSetup = () => {
     return (
       <Grid container direction="column" spacing={3}>
         <Grid item>
@@ -137,8 +137,8 @@ class TestSuiteRunBase extends React.Component {
                 <Button
                   variant="contained"
                   color="primary"
-                  disabled={this.startDisabled()}
-                  onClick={this.start}
+                  disabled={startDisabled()}
+                  onClick={start}
                   type="submit"
                 >
                   Begin Test Suite
@@ -164,30 +164,29 @@ class TestSuiteRunBase extends React.Component {
     );
   };
 
-  renderBody = () => {
-    const { testSuiteRun } = this.props;
+  const renderBody = () => {
     if (testSuiteRun.started) {
       return (
         <Box>
           <TestRun
-            isLastTest={this.isLastTest()}
-            nextTest={this.nextTest}
+            isLastTest={isLastTest()}
+            nextTest={nextTest}
             testRunIndex={testSuiteRun.currentTestRunIndex}
           />
           <Box mt={2}>
             <Grid container justifyContent="space-between">
               <Grid item>
                 <Button
-                  disabled={this.isFirstTest() || this.currentTestIsActive()}
-                  onClick={this.previousTest}
+                  disabled={isFirstTest() || currentTestIsActive()}
+                  onClick={previousTest}
                 >
                   <ArrowBack /> &nbsp; Previous
                 </Button>
               </Grid>
               <Grid item>
                 <Button
-                  disabled={this.isLastTest() || this.currentTestIsActive()}
-                  onClick={this.nextTest}
+                  disabled={isLastTest() || currentTestIsActive()}
+                  onClick={nextTest}
                 >
                   Next &nbsp; <ArrowForward />
                 </Button>
@@ -197,52 +196,43 @@ class TestSuiteRunBase extends React.Component {
         </Box>
       );
     }
-    return this.renderSetup();
+    useEffect(() => {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }, []);
+    return renderSetup();
   };
 
-  start = () => {
-    const { startTestSuiteRun } = this.props;
-    startTestSuiteRun();
-  };
-
-  startDisabled = () => {
-    const { testSuiteRun, keystore } = this.props;
-    return (
-      keystore.type === "" ||
-      keystore.status === ACTIVE ||
-      testSuiteRun.started ||
-      testSuiteRun.testRuns.length === 0
-    );
-  };
-
-  isFirstTest = () => {
-    const { testSuiteRun } = this.props;
-    return testSuiteRun.currentTestRunIndex === 0;
-  };
-
-  isLastTest = () => {
-    const { testSuiteRun } = this.props;
-    return (
-      testSuiteRun.currentTestRunIndex === testSuiteRun.testRuns.length - 1
-    );
-  };
-
-  previousTest = () => {
-    const { testSuiteRun, setCurrentTestRun } = this.props;
-    if (testSuiteRun.currentTestRunIndex < 1) {
-      return;
-    }
-    setCurrentTestRun(testSuiteRun.currentTestRunIndex - 1);
-  };
-
-  nextTest = () => {
-    const { testSuiteRun, setCurrentTestRun } = this.props;
-    if (testSuiteRun.currentTestRunIndex === testSuiteRun.testRuns.length - 1) {
-      return;
-    }
-    setCurrentTestRun(testSuiteRun.currentTestRunIndex + 1);
-  };
-}
+  return (
+    <Box mt={2}>
+      {testSuiteRun.started && (
+        <Box mt={2} mb={2}>
+          <LinearProgress
+            variant="determinate"
+            value={
+              100 *
+              (testSuiteRun.testRuns.filter(
+                (testRun) =>
+                  testRun.status !== PENDING && testRun.status !== ACTIVE
+              ).length /
+                testSuiteRun.testRuns.length)
+            }
+          />
+        </Box>
+      )}
+      <Grid container spacing={3}>
+        <Grid item md={4}>
+          <TestSuiteRunSummary />
+        </Grid>
+        <Grid item md={8}>
+          {renderBody()}
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
 
 TestSuiteRunBase.propTypes = {
   keystore: PropTypes.shape({

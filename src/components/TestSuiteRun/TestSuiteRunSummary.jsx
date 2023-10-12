@@ -41,65 +41,86 @@ import { setCurrentTestRun as setCurrentTestRunAction } from "../../actions/test
 
 import "./TestSuiteRunSummary.css";
 
-class TestSuiteRunSummaryBase extends React.Component {
-  render = () => {
-    const { testSuiteRun, keystore } = this.props;
-    const environment = Bowser.getParser(window.navigator.userAgent);
-    return (
-      <Grid container direction="column" spacing={3}>
-        <Grid item>
-          <Card>
-            <CardHeader title="Summary" />
-            <CardContent>
-              <dl>
-                <dt>OS:</dt>
-                <dd>
-                  {environment.getOSName()} {environment.getOSVersion()}
-                </dd>
-                <dt>Browser:</dt>
-                <dd>
-                  {environment.getBrowserName()}{" "}
-                  {environment.getBrowserVersion()}
-                </dd>
-                <dt>unchained-wallets:</dt>
-                <dd>
-                  v.
-                  {UNCHAINED_WALLETS_VERSION}
-                </dd>
-                {keystore.type && (
-                  <Box>
-                    <dt>Keystore:</dt>
-                    <dd>
-                      {this.keystoreName(keystore.type)} {keystore.version}
-                    </dd>
-                  </Box>
-                )}
-                {keystore.note && (
-                  <Box>
-                    <dt>Notes:</dt>
-                    <dd>{keystore.note}</dd>
-                  </Box>
-                )}
-              </dl>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item>
-          <Card>
-            <CardHeader
-              title="Tests"
-              subheader={`${testSuiteRun.testRuns.length} Total`}
-            />
-            <CardContent>{this.renderTests()}</CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    );
+const TestSuiteRunSummaryBase = ({
+  testSuiteRun,
+  keystore,
+  setCurrentTestRun,
+}) => {
+  const renderTestRunResult = (testRun) => {
+    switch (testRun.status) {
+      case PENDING:
+        return (
+          <ListItemIcon>
+            <PendingIcon className="TestSuiteRunSummary-pending" />
+          </ListItemIcon>
+        );
+      case Test.SUCCESS:
+        return (
+          <ListItemIcon>
+            <SuccessIcon className="TestSuiteRunSummary-success" />
+          </ListItemIcon>
+        );
+      case Test.FAILURE:
+        return (
+          <ListItemIcon>
+            <FailureIcon className="TestSuiteRunSummary-failure" />
+          </ListItemIcon>
+        );
+      case Test.ERROR:
+        return (
+          <ListItemIcon>
+            <ErrorIcon className="TestSuiteRunSummary-error" />
+          </ListItemIcon>
+        );
+      case ACTIVE:
+        return (
+          <ListItemIcon>
+            <CircularProgress className="TestSuiteRunSummary-active" />
+          </ListItemIcon>
+        );
+      default:
+        return null;
+    }
   };
 
-  renderTests = () => {
-    const { testSuiteRun, keystore } = this.props;
+  const testRunChooser = (testRunIndex) => {
+    return () => {
+      setCurrentTestRun(testRunIndex);
+    };
+  };
+  const renderTestRun = (testRun, i) => {
+    return (
+      <ListItem
+        selected={testSuiteRun.currentTestRunIndex === i}
+        button
+        key={i}
+        onClick={testRunChooser(i)}
+        disabled={!testSuiteRun.started}
+      >
+        {renderTestRunResult(testRun)}
+        <ListItemText>
+          {testRun.test.name()}
+          {testRun.status !== PENDING && testRun.status !== ACTIVE && (
+            <small>
+              &nbsp; (
+              {moment
+                .duration(testRun.endedAt.diff(testRun.startedAt))
+                .asSeconds()}
+              s)
+            </small>
+          )}
+        </ListItemText>
+        {testRun.note && (
+          <ListItemIcon>
+            <Tooltip title={testRun.note}>
+              <NoteIcon />
+            </Tooltip>
+          </ListItemIcon>
+        )}
+      </ListItem>
+    );
+  };
+  const renderTests = () => {
     if (keystore.type === "") {
       return <p>Choose a keystore type to generate a test suite...</p>;
     }
@@ -141,91 +162,13 @@ class TestSuiteRunSummaryBase extends React.Component {
           dense
           component="nav"
         >
-          {testSuiteRun.testRuns.map(this.renderTestRun)}
+          {testSuiteRun.testRuns.map(renderTestRun)}
         </List>
       </Box>
     );
   };
 
-  renderTestRun = (testRun, i) => {
-    const { testSuiteRun } = this.props;
-    return (
-      <ListItem
-        selected={testSuiteRun.currentTestRunIndex === i}
-        button
-        key={i}
-        onClick={this.testRunChooser(i)}
-        disabled={!testSuiteRun.started}
-      >
-        {this.renderTestRunResult(testRun)}
-        <ListItemText>
-          {testRun.test.name()}
-          {testRun.status !== PENDING && testRun.status !== ACTIVE && (
-            <small>
-              &nbsp; (
-              {moment
-                .duration(testRun.endedAt.diff(testRun.startedAt))
-                .asSeconds()}
-              s)
-            </small>
-          )}
-        </ListItemText>
-        {testRun.note && (
-          <ListItemIcon>
-            <Tooltip title={testRun.note}>
-              <NoteIcon />
-            </Tooltip>
-          </ListItemIcon>
-        )}
-      </ListItem>
-    );
-  };
-
-  renderTestRunResult = (testRun) => {
-    switch (testRun.status) {
-      case PENDING:
-        return (
-          <ListItemIcon>
-            <PendingIcon className="TestSuiteRunSummary-pending" />
-          </ListItemIcon>
-        );
-      case Test.SUCCESS:
-        return (
-          <ListItemIcon>
-            <SuccessIcon className="TestSuiteRunSummary-success" />
-          </ListItemIcon>
-        );
-      case Test.FAILURE:
-        return (
-          <ListItemIcon>
-            <FailureIcon className="TestSuiteRunSummary-failure" />
-          </ListItemIcon>
-        );
-      case Test.ERROR:
-        return (
-          <ListItemIcon>
-            <ErrorIcon className="TestSuiteRunSummary-error" />
-          </ListItemIcon>
-        );
-      case ACTIVE:
-        return (
-          <ListItemIcon>
-            <CircularProgress className="TestSuiteRunSummary-active" />
-          </ListItemIcon>
-        );
-      default:
-        return null;
-    }
-  };
-
-  testRunChooser = (testRunIndex) => {
-    const { setCurrentTestRun } = this.props;
-    return () => {
-      setCurrentTestRun(testRunIndex);
-    };
-  };
-
-  keystoreName = (type) => {
+  const keystoreName = (type) => {
     switch (type) {
       case TREZOR:
         return "Trezor";
@@ -239,7 +182,59 @@ class TestSuiteRunSummaryBase extends React.Component {
         return "";
     }
   };
-}
+
+  const environment = Bowser.getParser(window.navigator.userAgent);
+  return (
+    <Grid container direction="column" spacing={3}>
+      <Grid item>
+        <Card>
+          <CardHeader title="Summary" />
+          <CardContent>
+            <dl>
+              <dt>OS:</dt>
+              <dd>
+                {environment.getOSName()} {environment.getOSVersion()}
+              </dd>
+              <dt>Browser:</dt>
+              <dd>
+                {environment.getBrowserName()} {environment.getBrowserVersion()}
+              </dd>
+              <dt>unchained-wallets:</dt>
+              <dd>
+                v.
+                {UNCHAINED_WALLETS_VERSION}
+              </dd>
+              {keystore.type && (
+                <Box>
+                  <dt>Keystore:</dt>
+                  <dd>
+                    {keystoreName(keystore.type)} {keystore.version}
+                  </dd>
+                </Box>
+              )}
+              {keystore.note && (
+                <Box>
+                  <dt>Notes:</dt>
+                  <dd>{keystore.note}</dd>
+                </Box>
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      <Grid item>
+        <Card>
+          <CardHeader
+            title="Tests"
+            subheader={`${testSuiteRun.testRuns.length} Total`}
+          />
+          <CardContent>{renderTests()}</CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+};
 
 TestSuiteRunSummaryBase.propTypes = {
   keystore: PropTypes.shape({

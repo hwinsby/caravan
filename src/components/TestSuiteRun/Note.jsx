@@ -9,9 +9,8 @@ import { setTestRunNote } from "../../actions/testRunActions";
 const KEYSTORE_MODE = "keystore";
 const TEST_RUN_MODE = "testRun";
 
-class NoteBase extends React.Component {
-  handleChange = (event) => {
-    const { setNote, mode, testRunIndex } = this.props;
+const NoteBase = ({ note, setNote, mode, testRunIndex }) => {
+  const handleChange = (event) => {
     const newNote = event.target.value;
     if (mode === TEST_RUN_MODE) {
       setNote(testRunIndex, newNote);
@@ -20,22 +19,19 @@ class NoteBase extends React.Component {
     }
   };
 
-  render() {
-    const { note } = this.props;
-    return (
-      <TextField
-        name="notes"
-        label="Notes"
-        value={note}
-        variant="standard"
-        onChange={this.handleChange}
-        multiline
-        fullWidth
-        rows={3}
-      />
-    );
-  }
-}
+  return (
+    <TextField
+      name="notes"
+      label="Notes"
+      value={note}
+      variant="standard"
+      onChange={handleChange}
+      multiline
+      fullWidth
+      rows={3}
+    />
+  );
+};
 
 NoteBase.propTypes = {
   note: PropTypes.string.isRequired,
