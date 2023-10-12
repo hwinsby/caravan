@@ -1,4 +1,4 @@
-import React from "react";
+import React, { createRef, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { validatePublicKey, validateBIP32Path } from "unchained-bitcoin";
@@ -34,53 +34,25 @@ import {
   setPublicKeyImporterPublicKey,
 } from "../../actions/ownershipActions";
 
-class ConfirmOwnership extends React.Component {
-  titleRef = React.createRef();
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      disableChangeMethod: false,
-    };
-  }
-
-  componentDidMount = () => {
-    this.resetBIP32Path();
-    this.scrollToTitle();
-  };
-
-  componentDidUpdate = () => {
-    this.scrollToTitle();
-  };
-
-  scrollToTitle = () => {
-    this.titleRef.current.scrollIntoView({ behavior: "smooth" });
-  };
+const ConfirmOwnership = ({
+  publicKeyImporter,
+  setMethod,
+  reset,
+  resetBIP32Path,
+  setBIP32Path,
+  setPublicKey,
+  publicKeys,
+  network,
+  defaultBIP32Path,
+}) => {
+  const [disableChangeMethod, setDisableChangeMethod] = useState(false);
 
   //
   // Method
   //
 
-  handleMethodChange = (event) => {
-    const { setMethod } = this.props;
+  const handleMethodChange = (event) => {
     setMethod(event.target.value);
-    this.reset();
-  };
-
-  disableChangeMethod = () => {
-    this.setState({ disableChangeMethod: true });
-  };
-
-  enableChangeMethod = () => {
-    this.setState({ disableChangeMethod: false });
-  };
-
-  //
-  // State
-  //
-
-  reset = () => {
-    const { reset } = this.props;
     reset();
   };
 
@@ -88,13 +60,7 @@ class ConfirmOwnership extends React.Component {
   // BIP32 Path
   //
 
-  resetBIP32Path = () => {
-    const { resetBIP32Path } = this.props;
-    resetBIP32Path();
-  };
-
-  validateAndSetBIP32Path = (bip32Path, callback, errback, options) => {
-    const { setBIP32Path } = this.props;
+  const validateAndSetBIP32Path = (bip32Path, callback, errback, options) => {
     const error = validateBIP32Path(bip32Path, options);
     setBIP32Path(bip32Path);
     if (error) {
@@ -109,8 +75,7 @@ class ConfirmOwnership extends React.Component {
   // Public Keey & Confirmation
   //
 
-  validateAndSetPublicKey = (publicKey, errback, callback) => {
-    const { setPublicKey } = this.props;
+  const validateAndSetPublicKey = (publicKey, errback, callback) => {
     const error = validatePublicKey(publicKey);
     setPublicKey(publicKey);
     if (error) {
@@ -121,8 +86,7 @@ class ConfirmOwnership extends React.Component {
     }
   };
 
-  renderConfirmation = () => {
-    const { publicKeys, publicKeyImporter } = this.props;
+  const renderConfirmation = () => {
     if (publicKeyImporter.publicKey === "") {
       return null;
     }
@@ -161,18 +125,17 @@ class ConfirmOwnership extends React.Component {
     );
   };
 
-  renderImportByMethod = () => {
-    const { network, publicKeyImporter, defaultBIP32Path } = this.props;
+  const renderImportByMethod = () => {
     if (publicKeyImporter.method === HERMIT) {
       return (
         <HermitPublicKeyImporter
           publicKeyImporter={publicKeyImporter}
-          validateAndSetBIP32Path={this.validateAndSetBIP32Path}
-          validateAndSetPublicKey={this.validateAndSetPublicKey}
-          resetBIP32Path={this.resetBIP32Path}
-          enableChangeMethod={this.enableChangeMethod}
-          disableChangeMethod={this.disableChangeMethod}
-          reset={this.reset}
+          validateAndSetBIP32Path={validateAndSetBIP32Path}
+          validateAndSetPublicKey={validateAndSetPublicKey}
+          resetBIP32Path={resetBIP32Path}
+          enableChangeMethod={() => setDisableChangeMethod(false)}
+          disableChangeMethod={() => setDisableChangeMethod(true)}
+          reset={reset}
         />
       );
     }
@@ -184,67 +147,77 @@ class ConfirmOwnership extends React.Component {
         <HardwareWalletPublicKeyImporter
           network={network}
           publicKeyImporter={publicKeyImporter}
-          validateAndSetBIP32Path={this.validateAndSetBIP32Path}
-          resetBIP32Path={this.resetBIP32Path}
+          validateAndSetBIP32Path={validateAndSetBIP32Path}
+          resetBIP32Path={resetBIP32Path}
           defaultBIP32Path={defaultBIP32Path}
-          validateAndSetPublicKey={this.validateAndSetPublicKey}
-          enableChangeMethod={this.enableChangeMethod}
-          disableChangeMethod={this.disableChangeMethod}
+          validateAndSetPublicKey={validateAndSetPublicKey}
+          enableChangeMethod={() => setDisableChangeMethod(false)}
+          disableChangeMethod={() => setDisableChangeMethod(true)}
         />
       );
     }
     return null;
   };
 
-  render() {
-    const { publicKeyImporter } = this.props;
-    const { disableChangeMethod } = this.state;
+  const titleRef = createRef();
 
-    return (
-      <Card>
-        <CardHeader ref={this.titleRef} title="Confirm Ownership" />
-        <CardContent>
-          <form>
-            <p>How will you confirm your ownership of this address?</p>
+  const scrollToTitle = () => {
+    titleRef.current.scrollIntoView({ behavior: "smooth" });
+  };
 
-            <FormControl fullWidth>
-              <TextField
-                label="Select Method"
-                id="public-key-importer-select"
-                disabled={disableChangeMethod}
-                select
-                value={publicKeyImporter.method}
-                onChange={this.handleMethodChange}
-                variant="standard"
-              >
-                <MenuItem value="">{"< Select method >"}</MenuItem>
-                <MenuItem value={TREZOR}>Trezor</MenuItem>
-                <MenuItem value={LEDGER}>Ledger</MenuItem>
-                <MenuItem value={HERMIT}>Hermit</MenuItem>
-              </TextField>
-            </FormControl>
+  useEffect(() => {
+    resetBIP32Path();
+    scrollToTitle();
+  }, []);
 
-            {this.renderImportByMethod()}
+  useEffect(() => {
+    scrollToTitle();
+  }, []);
 
-            {this.renderConfirmation()}
+  return (
+    <Card>
+      <CardHeader ref={titleRef} title="Confirm Ownership" />
+      <CardContent>
+        <form>
+          <p>How will you confirm your ownership of this address?</p>
 
-            {publicKeyImporter.method !== "" && (
-              <Button
-                variant="contained"
-                size="small"
-                color="secondary"
-                role="button"
-                onClick={this.reset}
-              >
-                Start Again
-              </Button>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-    );
-  }
-}
+          <FormControl fullWidth>
+            <TextField
+              label="Select Method"
+              id="public-key-importer-select"
+              disabled={disableChangeMethod}
+              select
+              value={publicKeyImporter.method}
+              onChange={handleMethodChange}
+              variant="standard"
+            >
+              <MenuItem value="">{"< Select method >"}</MenuItem>
+              <MenuItem value={TREZOR}>Trezor</MenuItem>
+              <MenuItem value={LEDGER}>Ledger</MenuItem>
+              <MenuItem value={HERMIT}>Hermit</MenuItem>
+            </TextField>
+          </FormControl>
+
+          {renderImportByMethod()}
+
+          {renderConfirmation()}
+
+          {publicKeyImporter.method !== "" && (
+            <Button
+              variant="contained"
+              size="small"
+              color="secondary"
+              role="button"
+              onClick={reset}
+            >
+              Start Again
+            </Button>
+          )}
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
 
 ConfirmOwnership.propTypes = {
   defaultBIP32Path: PropTypes.string.isRequired,
