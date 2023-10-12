@@ -16,35 +16,47 @@ import ConfirmOwnership from "./ConfirmOwnership";
 import UnsignedTransaction from "../UnsignedTransaction";
 import "../styles.css";
 
-class Spend extends React.Component {
-  render = () => {
+const Spend = ({ transaction, ownership, signatureImporters }) => {
+  const renderSignatureImporters = () => {
+    const signatureImp = [];
+    for (
+      let signatureImporterNum = 1;
+      signatureImporterNum <= transaction.requiredSigners;
+      signatureImporterNum += 1
+    ) {
+      signatureImp.push(
+        <Box key={signatureImporterNum} mt={2}>
+          <SignatureImporter number={signatureImporterNum} />
+        </Box>
+      );
+    }
+    return signatureImp;
+  };
+
+  const spendable = () => {
+    return transaction.inputs.length > 0;
+  };
+
+  const signaturesFinalized = () => {
     return (
-      <Box mt={2}>
-        <Grid container spacing={3}>
-          <Grid item md={8}>
-            <Box>
-              <ScriptEntry />
-            </Box>
-            {this.renderBody()}
-          </Grid>
-          <Grid item md={4}>
-            <Box>
-              <AddressTypePicker />
-            </Box>
-            <Box mt={2}>
-              <NetworkPicker />
-            </Box>
-            <Box mt={2}>
-              <ClientPicker />
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
+      Object.values(signatureImporters).length > 0 &&
+      Object.values(signatureImporters).every(
+        (signatureImporter) => signatureImporter.finalized
+      )
     );
   };
 
-  renderBody = () => {
-    const { transaction, ownership } = this.props;
+  // const confirmOwnership = (value) => {
+  //   // TODO can this entire function be removed? The states aren't being used.
+  //   // eslint-disable-next-line react/no-unused-state
+  //   this.setState({ addressFinalized: true, confirmOwnership: value });
+  // };
+
+  // @winsby: the author of the above comment has a point.
+  // Not only are the states not being use, but there is also no constructor, so the states are not being initialized.
+  // Additionally, the function is not being called anywhere.
+
+  const renderBody = () => {
     if (ownership.chosen) {
       return (
         <Box mt={2}>
@@ -54,7 +66,7 @@ class Spend extends React.Component {
     }
     return (
       <Box>
-        {this.spendable() && (
+        {spendable() && (
           <Box>
             <Box mt={2}>
               <Card>
@@ -83,11 +95,11 @@ class Spend extends React.Component {
               <UnsignedTransaction />
             </Box>
 
-            <Box mt={2}>{this.renderSignatureImporters()}</Box>
+            <Box mt={2}>{renderSignatureImporters()}</Box>
           </div>
         )}
 
-        {this.signaturesFinalized() && (
+        {signaturesFinalized() && (
           <Box mt={2}>
             <Transaction />
           </Box>
@@ -95,45 +107,30 @@ class Spend extends React.Component {
       </Box>
     );
   };
-
-  renderSignatureImporters = () => {
-    const { transaction } = this.props;
-    const signatureImporters = [];
-    for (
-      let signatureImporterNum = 1;
-      signatureImporterNum <= transaction.requiredSigners;
-      signatureImporterNum += 1
-    ) {
-      signatureImporters.push(
-        <Box key={signatureImporterNum} mt={2}>
-          <SignatureImporter number={signatureImporterNum} />
-        </Box>
-      );
-    }
-    return signatureImporters;
-  };
-
-  spendable = () => {
-    const { transaction } = this.props;
-    return transaction.inputs.length > 0;
-  };
-
-  signaturesFinalized = () => {
-    const { signatureImporters } = this.props;
-    return (
-      Object.values(signatureImporters).length > 0 &&
-      Object.values(signatureImporters).every(
-        (signatureImporter) => signatureImporter.finalized
-      )
-    );
-  };
-
-  confirmOwnership = (value) => {
-    // TODO can this entire function be removed? The states aren't being used.
-    // eslint-disable-next-line react/no-unused-state
-    this.setState({ addressFinalized: true, confirmOwnership: value });
-  };
-}
+  return (
+    <Box mt={2}>
+      <Grid container spacing={3}>
+        <Grid item md={8}>
+          <Box>
+            <ScriptEntry />
+          </Box>
+          {renderBody()}
+        </Grid>
+        <Grid item md={4}>
+          <Box>
+            <AddressTypePicker />
+          </Box>
+          <Box mt={2}>
+            <NetworkPicker />
+          </Box>
+          <Box mt={2}>
+            <ClientPicker />
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
 
 Spend.propTypes = {
   transaction: PropTypes.shape({

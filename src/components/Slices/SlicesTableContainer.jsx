@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
@@ -22,28 +22,21 @@ import { slicePropTypes, clientPropTypes } from "../../proptypes";
 // Components
 import SlicesTable from "./SlicesTable";
 
-class SlicesTableContainer extends React.PureComponent {
-  constructor(props) {
-    super(props);
-    this.state = {
-      filterIncludeSpent: false,
-      filterIncludeZeroBalance: false,
-      displaySlices: props.slicesWithBalance.length
-        ? [...props.slicesWithBalance]
-        : [],
-    };
-  }
+const SlicesTableContainer = ({
+  client,
+  network,
+  slicesWithBalance,
+  zeroBalanceSlices,
+  spentSlices,
+}) => {
+  const [filterIncludeSpent, setFilterIncludeSpent] = useState(false);
+  const [filterIncludeZeroBalance, setFilterIncludeZeroBalance] =
+    useState(false);
+  const [displaySlices, setDisplaySlices] = useState(
+    slicesWithBalance.length ? [...slicesWithBalance] : []
+  );
 
-  componentDidUpdate(newProps) {
-    const { slicesWithBalance } = this.props;
-    if (newProps.slicesWithBalance.length !== slicesWithBalance.length) {
-      this.setDisplaySlices();
-    }
-  }
-
-  setDisplaySlices() {
-    const { slicesWithBalance, zeroBalanceSlices, spentSlices } = this.props;
-    const { filterIncludeSpent, filterIncludeZeroBalance } = this.state;
+  useEffect(() => {
     const newDisplaySlices = [...slicesWithBalance];
     if (filterIncludeSpent) {
       newDisplaySlices.push(...spentSlices);
@@ -51,65 +44,63 @@ class SlicesTableContainer extends React.PureComponent {
     if (filterIncludeZeroBalance) {
       newDisplaySlices.push(...zeroBalanceSlices);
     }
-    this.setState({ displaySlices: newDisplaySlices });
-  }
+    setDisplaySlices(newDisplaySlices);
+  }, [slicesWithBalance.length, filterIncludeSpent, filterIncludeZeroBalance]);
 
-  filterAddresses = (event, checked) => {
-    this.setState({ [event.target.value]: checked }, () =>
-      this.setDisplaySlices()
-    );
+  const filterAddresses = (event) => {
+    const { value, checked } = event.target;
+    if (value === "filterIncludeSpent") {
+      setFilterIncludeSpent(checked);
+    }
+    if (value === "filterIncludeZeroBalance") {
+      setFilterIncludeZeroBalance(checked);
+    }
   };
 
-  render() {
-    const { filterIncludeSpent, filterIncludeZeroBalance, displaySlices } =
-      this.state;
-    const { client, network } = this.props;
-
-    return (
-      <Card>
-        <CardContent>
-          <Grid container direction="column">
-            <Grid item>
-              <SlicesTable
-                slices={displaySlices}
-                client={client}
-                network={network}
-                paging
-              />
-            </Grid>
-            <Grid item>
-              <FormGroup row>
-                <FormLabel component="h2">
-                  <Box mr={3}>Show Additional</Box>
-                </FormLabel>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={filterIncludeSpent}
-                      value="filterIncludeSpent"
-                      onChange={this.filterAddresses}
-                    />
-                  }
-                  label="Spent Addresses"
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={filterIncludeZeroBalance}
-                      value="filterIncludeZeroBalance"
-                      onChange={this.filterAddresses}
-                    />
-                  }
-                  label="Zero Balance"
-                />
-              </FormGroup>
-            </Grid>
+  return (
+    <Card>
+      <CardContent>
+        <Grid container direction="column">
+          <Grid item>
+            <SlicesTable
+              slices={displaySlices}
+              client={client}
+              network={network}
+              paging
+            />
           </Grid>
-        </CardContent>
-      </Card>
-    );
-  }
-}
+          <Grid item>
+            <FormGroup row>
+              <FormLabel component="h2">
+                <Box mr={3}>Show Additional</Box>
+              </FormLabel>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={filterIncludeSpent}
+                    value="filterIncludeSpent"
+                    onChange={filterAddresses}
+                  />
+                }
+                label="Spent Addresses"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={filterIncludeZeroBalance}
+                    value="filterIncludeZeroBalance"
+                    onChange={filterAddresses}
+                  />
+                }
+                label="Zero Balance"
+              />
+            </FormGroup>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+};
 
 SlicesTableContainer.propTypes = {
   slicesWithBalance: PropTypes.arrayOf(PropTypes.shape(slicePropTypes))

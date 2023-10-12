@@ -27,39 +27,38 @@ import {
 } from "../../actions/transactionActions";
 import styles from "./styles.module.scss";
 
-class OutputEntry extends React.Component {
-  displayBalanceAction = () => {
-    const { isWallet, finalizedOutputs, autoSpend } = this.props;
-    if (isWallet) {
-      return (
-        !autoSpend &&
-        !finalizedOutputs &&
-        this.hasBalanceError() &&
-        this.isBalanceable()
-      );
-    }
-    return !finalizedOutputs && this.hasBalanceError() && this.isBalanceable();
-  };
-
+const OutputEntry = ({
+  isWallet,
+  finalizedOutputs,
+  autoSpend,
+  changeNode,
+  number,
+  setAddress,
+  setChangeOutput,
+  outputs,
+  address,
+  amount,
+  addressError,
+  amountError,
+  changeOutputIndex,
+  setMaxSpend,
+  remove,
+  setAmount,
+  balanceError,
+  fee,
+  inputsTotalSats,
+  feeError,
+}) => {
   //
   // Address
   //
 
-  addChangeAddress = () => {
-    const { changeNode, number, setAddress, setChangeOutput } = this.props;
+  const addChangeAddress = () => {
     setAddress(number, changeNode.multisig.address);
     setChangeOutput(number);
   };
 
-  renderChangeAdornment = () => {
-    const {
-      changeNode,
-      number,
-      changeOutputIndex,
-      address,
-      isWallet,
-      autoSpend,
-    } = this.props;
+  const renderChangeAdornment = () => {
     if (isWallet && autoSpend) return {};
     if (changeNode !== null) {
       let title;
@@ -78,7 +77,7 @@ class OutputEntry extends React.Component {
           <InputAdornment position="end">
             <Tooltip placement="top" title={title}>
               <small>
-                <IconButton onClick={this.addChangeAddress} disabled={disable}>
+                <IconButton onClick={addChangeAddress} disabled={disable}>
                   <AccountBalanceWalletOutlinedIcon />
                 </IconButton>
               </small>
@@ -90,13 +89,11 @@ class OutputEntry extends React.Component {
     return {};
   };
 
-  handleAddressChange = (event) => {
-    const { number, setAddress } = this.props;
+  const handleAddressChange = (event) => {
     setAddress(number, event.target.value);
   };
 
-  hasAddressError = () => {
-    const { addressError } = this.props;
+  const hasAddressError = () => {
     return addressError !== "";
   };
 
@@ -104,13 +101,11 @@ class OutputEntry extends React.Component {
   // Amount
   //
 
-  handleAmountChange = (event) => {
-    const { number, setAmount } = this.props;
+  const handleAmountChange = (event) => {
     setAmount(number, event.target.value);
   };
 
-  hasAmountError = () => {
-    const { amountError } = this.props;
+  const hasAmountError = () => {
     return amountError !== "";
   };
 
@@ -118,38 +113,11 @@ class OutputEntry extends React.Component {
   // Balance
   //
 
-  isNotBalanceable = () => {
-    const { number, outputs, feeError, amountError, amount, inputsTotalSats } =
-      this.props;
-    if (feeError !== "") {
-      return true;
-    }
-    for (let i = 0; i < outputs.length; i += 1) {
-      if (i !== number - 1) {
-        if (outputs[i].amountError !== "" || outputs[i].amount === "") {
-          return true;
-        }
-      }
-    }
-    const newAmount = this.autoBalancedAmount();
-    if (
-      validateOutputAmount(bitcoinsToSatoshis(newAmount), inputsTotalSats) !==
-      ""
-    ) {
-      return true;
-    }
-    return amountError === "" && newAmount === new BigNumber(amount);
-  };
-
-  isBalanceable = () => !this.isNotBalanceable();
-
-  hasBalanceError = () => {
-    const { balanceError } = this.props;
+  const hasBalanceError = () => {
     return balanceError !== "";
   };
 
-  autoBalancedAmount = () => {
-    const { number, fee, inputsTotalSats, outputs } = this.props;
+  const autoBalancedAmount = () => {
     const outputTotalSats = outputs
       .filter((output, i) => i !== number - 1)
       .map((output) => output.amountSats)
@@ -162,143 +130,155 @@ class OutputEntry extends React.Component {
       inputsTotalSats.minus(outputTotalSats.plus(feeSats))
     );
   };
+  const isNotBalanceable = () => {
+    if (feeError !== "") {
+      return true;
+    }
+    for (let i = 0; i < outputs.length; i += 1) {
+      if (i !== number - 1) {
+        if (outputs[i].amountError !== "" || outputs[i].amount === "") {
+          return true;
+        }
+      }
+    }
+    const newAmount = autoBalancedAmount();
+    if (
+      validateOutputAmount(bitcoinsToSatoshis(newAmount), inputsTotalSats) !==
+      ""
+    ) {
+      return true;
+    }
+    return amountError === "" && newAmount === new BigNumber(amount);
+  };
 
-  balanceAction = () => {
-    const { balanceError } = this.props;
-    if (!this.hasBalanceError() || this.isNotBalanceable()) {
+  const isBalanceable = () => !isNotBalanceable();
+  const displayBalanceAction = () => {
+    if (isWallet) {
+      return (
+        !autoSpend && !finalizedOutputs && hasBalanceError() && isBalanceable()
+      );
+    }
+    return !finalizedOutputs && hasBalanceError() && isBalanceable();
+  };
+
+  const balanceAction = () => {
+    if (!hasBalanceError() || isNotBalanceable()) {
       return null;
     }
     return balanceError.split(" ")[0];
   };
 
-  handleBalance = () => {
-    const { number, setAmount } = this.props;
-    setAmount(number, this.autoBalancedAmount().toString());
+  const handleBalance = () => {
+    setAmount(number, autoBalancedAmount().toString());
   };
 
   //
   // State
   //
 
-  hasError = () => {
-    return this.hasAddressError() || this.hasAmountError();
+  // @winsby: "hasError" is defined but never called;
+  const hasError = () => {
+    return hasAddressError() || hasAmountError();
   };
 
-  handleDelete = () => {
-    const { number, remove } = this.props;
+  const handleDelete = () => {
     remove(number);
   };
 
-  handleMaxSpend = (e) => {
+  const handleMaxSpend = (e) => {
     e.preventDefault();
-    const { number, setMaxSpend } = this.props;
     setMaxSpend(number);
   };
 
-  render() {
-    const {
-      outputs,
-      finalizedOutputs,
-      address,
-      amount,
-      addressError,
-      amountError,
-      changeOutputIndex,
-      autoSpend,
-      isWallet,
-      number,
-    } = this.props;
+  const gridSpacing = isWallet ? 10 : 1;
 
-    const gridSpacing = isWallet ? 10 : 1;
+  return (
+    <Grid container spacing={gridSpacing}>
+      <Grid item xs={7}>
+        <TextField
+          fullWidth
+          placeholder="Address"
+          name="destination"
+          className={styles.outputsFormInput}
+          disabled={finalizedOutputs}
+          onChange={handleAddressChange}
+          value={address}
+          variant="standard"
+          error={hasAddressError()}
+          helperText={addressError}
+          InputProps={renderChangeAdornment()}
+        />
+      </Grid>
 
-    return (
-      <Grid container spacing={gridSpacing}>
-        <Grid item xs={7}>
-          <TextField
-            fullWidth
-            placeholder="Address"
-            name="destination"
-            className={styles.outputsFormInput}
-            disabled={finalizedOutputs}
-            onChange={this.handleAddressChange}
-            value={address}
-            variant="standard"
-            error={this.hasAddressError()}
-            helperText={addressError}
-            InputProps={this.renderChangeAdornment()}
-          />
-        </Grid>
-
-        <Grid item xs={3}>
-          <TextField
-            fullWidth
-            placeholder="Amount"
-            className={styles.outputsFormInput}
-            name="amount"
-            disabled={finalizedOutputs}
-            onChange={this.handleAmountChange}
-            value={amount}
-            variant="standard"
-            error={this.hasAmountError()}
-            helperText={amountError}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  {isWallet &&
-                    autoSpend &&
-                    number === outputs.length &&
-                    number !== changeOutputIndex && (
-                      <Typography
-                        onClick={this.handleMaxSpend}
-                        className={styles.maxSpend}
-                        style={{ fontSize: ".7rem" }}
-                      >
-                        MAX
-                      </Typography>
-                    )}
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <FormHelperText>BTC</FormHelperText>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
-        {this.displayBalanceAction() && (
-          <Grid item xs={1}>
-            <Tooltip
-              title={`${this.balanceAction()} to ${this.autoBalancedAmount().toString()}`}
-              placement="top"
-            >
-              <small>
-                <IconButton onClick={this.handleBalance}>
-                  {this.balanceAction() === "Increase" ? (
-                    <AddCircle />
-                  ) : (
-                    <RemoveCircle />
+      <Grid item xs={3}>
+        <TextField
+          fullWidth
+          placeholder="Amount"
+          className={styles.outputsFormInput}
+          name="amount"
+          disabled={finalizedOutputs}
+          onChange={handleAmountChange}
+          value={amount}
+          variant="standard"
+          error={hasAmountError()}
+          helperText={amountError}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                {isWallet &&
+                  autoSpend &&
+                  number === outputs.length &&
+                  number !== changeOutputIndex && (
+                    <Typography
+                      onClick={handleMaxSpend}
+                      className={styles.maxSpend}
+                      style={{ fontSize: ".7rem" }}
+                    >
+                      MAX
+                    </Typography>
                   )}
-                </IconButton>
-              </small>
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <FormHelperText>BTC</FormHelperText>
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Grid>
+      {displayBalanceAction() && (
+        <Grid item xs={1}>
+          <Tooltip
+            title={`${balanceAction()} to ${autoBalancedAmount().toString()}`}
+            placement="top"
+          >
+            <small>
+              <IconButton onClick={handleBalance}>
+                {balanceAction() === "Increase" ? (
+                  <AddCircle />
+                ) : (
+                  <RemoveCircle />
+                )}
+              </IconButton>
+            </small>
+          </Tooltip>
+        </Grid>
+      )}
+
+      {!finalizedOutputs &&
+        outputs.length > (changeOutputIndex > 0 && autoSpend ? 2 : 1) && (
+          <Grid item xs={1}>
+            <Tooltip title="Remove Output" placement="top">
+              <IconButton onClick={handleDelete}>
+                <Delete />
+              </IconButton>
             </Tooltip>
           </Grid>
         )}
-
-        {!finalizedOutputs &&
-          outputs.length > (changeOutputIndex > 0 && autoSpend ? 2 : 1) && (
-            <Grid item xs={1}>
-              <Tooltip title="Remove Output" placement="top">
-                <IconButton onClick={this.handleDelete}>
-                  <Delete />
-                </IconButton>
-              </Tooltip>
-            </Grid>
-          )}
-      </Grid>
-    );
-  }
-}
+    </Grid>
+  );
+};
 
 OutputEntry.propTypes = {
   address: PropTypes.string.isRequired,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { satoshisToBitcoins } from "unchained-bitcoin";
 import {
@@ -23,29 +23,24 @@ import {
 import InteractionMessages from "../InteractionMessages";
 import { walletConfigPropType } from "../../proptypes/wallet";
 
-class DirectSignatureImporter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      signatureError: "",
-      bip32PathError: "",
-      status: this.interaction().isSupported() ? PENDING : UNSUPPORTED,
-    };
-  }
-
-  componentDidMount = () => {
-    this.resetBIP32Path();
-  };
-
-  interaction = () => {
-    const {
-      signatureImporter,
-      network,
-      inputs,
-      outputs,
-      walletConfig,
-      extendedPublicKeyImporter,
-    } = this.props;
+const DirectSignatureImporter = ({
+  signatureImporter,
+  network,
+  inputs,
+  outputs,
+  walletConfig,
+  extendedPublicKeyImporter,
+  fee,
+  inputsTotalSats,
+  isWallet,
+  disableChangeMethod,
+  validateAndSetSignature,
+  enableChangeMethod,
+  resetBIP32Path,
+  defaultBIP32Path,
+  validateAndSetBIP32Path,
+}) => {
+  const interaction = () => {
     const keystore = signatureImporter.method;
     const bip32Paths = inputs.map((input) => {
       if (typeof input.bip32Path === "undefined")
@@ -68,11 +63,145 @@ class DirectSignatureImporter extends React.Component {
     });
   };
 
-  render = () => {
-    const { signatureImporter, extendedPublicKeyImporter, isWallet } =
-      this.props;
-    const { status } = this.state;
-    const interaction = this.interaction();
+  const [signatureError, setSignatureError] = useState("");
+  const [bip32PathError, setBIP32PathError] = useState("");
+  const [status, setStatus] = useState(
+    interaction().isSupported() ? PENDING : UNSUPPORTED
+  );
+
+  //
+  // BIP32 Path
+  //
+
+  const hasBIP32PathError = () => {
+    return (
+      bip32PathError !== "" ||
+      interaction().hasMessagesFor({
+        state: status,
+        level: ERROR,
+        code: "bip32",
+      })
+    );
+  };
+
+  const checkBip32PathError = () => {
+    if (bip32PathError !== "") {
+      return bip32PathError;
+    }
+    return interaction().messageTextFor({
+      state: status,
+      level: ERROR,
+      code: "bip32",
+    });
+  };
+
+  const handleBIP32PathChange = (event) => {
+    const bip32Path = event.target.value;
+    validateAndSetBIP32Path(bip32Path, () => {}, setBIP32PathError);
+  };
+
+  const bip32PathIsDefault = () => {
+    return signatureImporter.bip32Path === defaultBIP32Path;
+  };
+
+  const resetBIP32PathAndError = () => {
+    setBIP32PathError("");
+    resetBIP32Path();
+  };
+
+  //
+  // Sign
+  //
+
+  const sign = async () => {
+    disableChangeMethod();
+    setSignatureError("");
+    setStatus(ACTIVE);
+    // @winsby - this setState Function is confusing me.
+    try {
+      const signature = await interaction().run();
+      validateAndSetSignature(signature, (signatureErr) => {
+        setSignatureError(signatureErr);
+        if (signatureErr !== "") {
+          setStatus(PENDING);
+        }
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      setSignatureError(e.message);
+      setStatus(PENDING);
+    }
+    enableChangeMethod();
+  };
+
+  const renderTargets = () => {
+    return outputs.map((output) => {
+      return (
+        <TableRow hover key={output.address}>
+          <TableCell>
+            Address <code>{output.address}</code>
+          </TableCell>
+          <TableCell>{output.amount}</TableCell>
+        </TableRow>
+      );
+    });
+  };
+
+  const renderDeviceConfirmInfo = () => {
+    if (status === ACTIVE) {
+      return (
+        <Box>
+          <p>Your device will ask you to verify the following information:</p>
+          <Table>
+            <TableHead>
+              <TableRow hover>
+                <TableCell />
+                <TableCell>Amount (BTC)</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {renderTargets()}
+              <TableRow hover>
+                <TableCell>Fee</TableCell>
+                <TableCell>{fee}</TableCell>
+              </TableRow>
+              <TableRow hover>
+                <TableCell>Total</TableCell>
+                <TableCell>
+                  {satoshisToBitcoins(inputsTotalSats).toString()}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Box>
+      );
+    }
+    return "";
+  };
+
+  const renderAction = () => {
+    return (
+      <Grid container alignItems="center">
+        <Grid item md={3}>
+          <Button
+            variant="contained"
+            size="large"
+            color="primary"
+            onClick={sign}
+            disabled={status !== PENDING}
+          >
+            Sign
+          </Button>
+        </Grid>
+        <Grid item md={9}>
+          <FormHelperText error>{signatureError}</FormHelperText>
+        </Grid>
+      </Grid>
+    );
+  };
+
+  const renderDirectSignatureImporter = () => {
     if (status === UNSUPPORTED) {
       return (
         <FormHelperText error>
@@ -96,19 +225,19 @@ class DirectSignatureImporter extends React.Component {
                   type="text"
                   value={signatureImporter.bip32Path}
                   variant="standard"
-                  onChange={this.handleBIP32PathChange}
+                  onChange={handleBIP32PathChange}
                   disabled={status !== PENDING}
-                  error={this.hasBIP32PathError()}
-                  helperText={this.bip32PathError()}
+                  error={hasBIP32PathError()}
+                  helperText={checkBip32PathError()}
                 />
               </Grid>
               <Grid item md={2}>
-                {!this.bip32PathIsDefault() && (
+                {!bip32PathIsDefault() && (
                   <Button
                     type="button"
                     variant="contained"
                     size="small"
-                    onClick={this.resetBIP32Path}
+                    onClick={resetBIP32PathAndError}
                     disabled={status !== PENDING}
                   >
                     Default
@@ -121,8 +250,8 @@ class DirectSignatureImporter extends React.Component {
             </FormHelperText>
           </>
         )}
-        <Box mt={2}>{this.renderAction()}</Box>
-        {this.renderDeviceConfirmInfo()}
+        <Box mt={2}>{renderAction()}</Box>
+        {renderDeviceConfirmInfo()}
         <InteractionMessages
           messages={interaction.messagesFor({ state: status })}
           excludeCodes={["bip32"]}
@@ -130,152 +259,12 @@ class DirectSignatureImporter extends React.Component {
       </Box>
     );
   };
+  useEffect(() => {
+    resetBIP32PathAndError();
+  }, []);
 
-  renderDeviceConfirmInfo = () => {
-    const { fee, inputsTotalSats } = this.props;
-    const { status } = this.state;
-
-    if (status === ACTIVE) {
-      return (
-        <Box>
-          <p>Your device will ask you to verify the following information:</p>
-          <Table>
-            <TableHead>
-              <TableRow hover>
-                <TableCell />
-                <TableCell>Amount (BTC)</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {this.renderTargets()}
-              <TableRow hover>
-                <TableCell>Fee</TableCell>
-                <TableCell>{fee}</TableCell>
-              </TableRow>
-              <TableRow hover>
-                <TableCell>Total</TableCell>
-                <TableCell>
-                  {satoshisToBitcoins(inputsTotalSats).toString()}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </Box>
-      );
-    }
-    return "";
-  };
-
-  renderTargets = () => {
-    const { outputs } = this.props;
-    return outputs.map((output) => {
-      return (
-        <TableRow hover key={output.address}>
-          <TableCell>
-            Address <code>{output.address}</code>
-          </TableCell>
-          <TableCell>{output.amount}</TableCell>
-        </TableRow>
-      );
-    });
-  };
-
-  renderAction = () => {
-    const { signatureError, status } = this.state;
-    return (
-      <Grid container alignItems="center">
-        <Grid item md={3}>
-          <Button
-            variant="contained"
-            size="large"
-            color="primary"
-            onClick={this.sign}
-            disabled={status !== PENDING}
-          >
-            Sign
-          </Button>
-        </Grid>
-        <Grid item md={9}>
-          <FormHelperText error>{signatureError}</FormHelperText>
-        </Grid>
-      </Grid>
-    );
-  };
-
-  //
-  // BIP32 Path
-  //
-
-  hasBIP32PathError = () => {
-    const { bip32PathError, status } = this.state;
-    return (
-      bip32PathError !== "" ||
-      this.interaction().hasMessagesFor({
-        state: status,
-        level: ERROR,
-        code: "bip32",
-      })
-    );
-  };
-
-  bip32PathError = () => {
-    const { bip32PathError, status } = this.state;
-    if (bip32PathError !== "") {
-      return bip32PathError;
-    }
-    return this.interaction().messageTextFor({
-      state: status,
-      level: ERROR,
-      code: "bip32",
-    });
-  };
-
-  setBIP32PathError = (value) => {
-    this.setState({ bip32PathError: value });
-  };
-
-  handleBIP32PathChange = (event) => {
-    const { validateAndSetBIP32Path } = this.props;
-    const bip32Path = event.target.value;
-    validateAndSetBIP32Path(bip32Path, () => {}, this.setBIP32PathError);
-  };
-
-  bip32PathIsDefault = () => {
-    const { signatureImporter, defaultBIP32Path } = this.props;
-    return signatureImporter.bip32Path === defaultBIP32Path;
-  };
-
-  resetBIP32Path = () => {
-    const { resetBIP32Path } = this.props;
-    this.setBIP32PathError("");
-    resetBIP32Path();
-  };
-
-  //
-  // Sign
-  //
-
-  sign = async () => {
-    const { disableChangeMethod, validateAndSetSignature, enableChangeMethod } =
-      this.props;
-    disableChangeMethod();
-    this.setState({ signatureError: "", status: ACTIVE });
-
-    try {
-      const signature = await this.interaction().run();
-      validateAndSetSignature(signature, (signatureError) => {
-        const stateUpdate = { signatureError };
-        if (signatureError !== "") stateUpdate.status = PENDING;
-        this.setState(stateUpdate);
-      });
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-      this.setState({ signatureError: e.message, status: PENDING });
-    }
-    enableChangeMethod();
-  };
-}
+  return renderDirectSignatureImporter();
+};
 
 DirectSignatureImporter.propTypes = {
   defaultBIP32Path: PropTypes.string.isRequired,

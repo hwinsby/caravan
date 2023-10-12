@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import {
   PENDING,
@@ -19,18 +19,23 @@ import {
 import { satoshisToBitcoins } from "unchained-bitcoin";
 import InteractionMessages from "../InteractionMessages";
 
-class IndirectSignatureImporter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      bip32PathError: "",
-      signatureError: "",
-      status: this.interaction().isSupported() ? PENDING : UNSUPPORTED,
-    };
-  }
-
-  interaction = () => {
-    const { signatureImporter, network, inputs, outputs } = this.props;
+const IndirectSignatureImporter = ({
+  fee,
+  inputsTotalSats,
+  outputs,
+  signatureImporter,
+  network,
+  inputs,
+  disableChangeMethod,
+  extendedPublicKeyImporter,
+  Signer,
+  defaultBIP32Path,
+  validateAndSetBIP32Path,
+  resetBIP32Path,
+  enableChangeMethod,
+  validateAndSetSignature,
+}) => {
+  const interaction = () => {
     const keystore = signatureImporter.method;
     const bip32Paths = inputs.map((input) => {
       if (typeof input.bip32Path === "undefined")
@@ -47,8 +52,25 @@ class IndirectSignatureImporter extends React.Component {
     });
   };
 
-  renderDeviceConfirmInfo = () => {
-    const { fee, inputsTotalSats } = this.props;
+  const [bip32PathError, setBip32PathError] = useState("");
+  const [signatureError, setSignatureError] = useState("");
+  const [status, setStatus] = useState(
+    interaction().isSupported() ? PENDING : UNSUPPORTED
+  );
+
+  const renderTargets = () => {
+    return outputs.map((output) => {
+      return (
+        <TableRow hover key={output.address}>
+          <TableCell>
+            Address <code>{output.address}</code>
+          </TableCell>
+          <TableCell>{output.amount}</TableCell>
+        </TableRow>
+      );
+    });
+  };
+  const renderDeviceConfirmInfo = () => {
     return (
       <Box>
         <p>Your device will ask you to verify the following information:</p>
@@ -60,7 +82,7 @@ class IndirectSignatureImporter extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            {this.renderTargets()}
+            {renderTargets()}
             <TableRow hover>
               <TableCell>Fee</TableCell>
               <TableCell>{fee}</TableCell>
@@ -77,81 +99,25 @@ class IndirectSignatureImporter extends React.Component {
     );
   };
 
-  renderTargets = () => {
-    const { outputs } = this.props;
-    return outputs.map((output) => {
-      return (
-        <TableRow hover key={output.address}>
-          <TableCell>
-            Address <code>{output.address}</code>
-          </TableCell>
-          <TableCell>{output.amount}</TableCell>
-        </TableRow>
-      );
-    });
+  const setActive = () => {
+    setStatus(ACTIVE);
   };
 
-  render = () => {
-    const { disableChangeMethod, extendedPublicKeyImporter, Signer } =
-      this.props;
-    const { signatureError, status } = this.state;
-    const interaction = this.interaction();
-    if (status === UNSUPPORTED) {
-      return (
-        <InteractionMessages
-          messages={interaction.messagesFor({ state: status })}
-          excludeCodes={["hermit.signature_request", "hermit.command"]}
-        />
-      );
-    }
-    return (
-      <Box mt={2}>
-        <Box mt={2}>
-          {this.renderDeviceConfirmInfo()}
-          <FormGroup>
-            <Signer
-              setError={this.setError}
-              hasError={this.hasBIP32PathError()}
-              onReceive={this.onReceive}
-              onReceivePSBT={this.onReceivePSBT}
-              interaction={this.interaction()}
-              setActive={this.setActive}
-              disableChangeMethod={disableChangeMethod}
-              extendedPublicKeyImporter={extendedPublicKeyImporter}
-            />
-
-            <FormHelperText error>{signatureError}</FormHelperText>
-
-            <InteractionMessages
-              messages={interaction.messagesFor({ state: status })}
-            />
-          </FormGroup>
-        </Box>
-      </Box>
-    );
-  };
-
-  setActive = () => {
-    this.setState({ status: ACTIVE });
-  };
-
-  onReceive = (signature) => {
-    const { validateAndSetSignature, enableChangeMethod } = this.props;
-    this.setState({ signatureError: "" });
+  const onReceive = (signature) => {
+    setSignatureError("");
     if (enableChangeMethod) {
       enableChangeMethod();
     }
-    validateAndSetSignature(signature, (signatureError) => {
-      this.setState({ signatureError });
+    validateAndSetSignature(signature, (signatureErr) => {
+      setSignatureError(signatureErr);
     });
   };
 
-  onReceivePSBT = (data) => {
-    const { validateAndSetSignature } = this.props;
+  const onReceivePSBT = (data) => {
     try {
       // signatureData is one or more sets of signatures that are keyed
       // based on which pubkey the signatures are signing.
-      const signatureData = this.interaction().parse(data);
+      const signatureData = interaction().parse(data);
       const signatureSetsKeys = Object.keys(signatureData);
       const signatures = [];
 
@@ -173,49 +139,81 @@ class IndirectSignatureImporter extends React.Component {
         signatures.push(...signatureData[pubkey]);
       });
 
-      this.setState({ signatureError: "" });
-      validateAndSetSignature(signatures, (signatureError) => {
-        this.setState({ signatureError });
+      setSignatureError("");
+      validateAndSetSignature(signatures, (signatureErr) => {
+        setSignatureError(signatureErr);
       });
     } catch (e) {
       e.errorType = "Coldcard Signing Error";
-      this.setState({ signatureError: e.message });
+      setSignatureError(e.message);
     }
   };
 
-  setError = (value) => {
-    this.setState({ signatureError: value });
-  };
-
-  clear = () => {
-    const { resetBIP32Path, enableChangeMethod } = this.props;
+  // @winsby: function `clear` is not being used anywhere.
+  const clear = () => {
     resetBIP32Path();
-    this.setState({ signatureError: "" });
+    setSignatureError("");
     enableChangeMethod();
   };
 
-  hasBIP32PathError = () => {
-    const { bip32PathError } = this.state;
+  const hasBIP32PathError = () => {
     return bip32PathError !== "";
   };
 
-  handleBIP32PathChange = (event) => {
-    const { validateAndSetBIP32Path } = this.props;
+  // @winsby: function `handleBIP32PathChange` is not being used anywhere.
+  const handleBIP32PathChange = (event) => {
     const bip32Path = event.target.value;
     validateAndSetBIP32Path(
       bip32Path,
       () => {},
-      (bip32PathError) => {
-        this.setState({ bip32PathError });
+      (bip32PathErr) => {
+        setBip32PathError(bip32PathErr);
       }
     );
   };
 
-  bip32PathIsDefault = () => {
-    const { signatureImporter, defaultBIP32Path } = this.props;
+  // @winsby: function `bip32PathIsDefault` is not being used anywhere.
+  const bip32PathIsDefault = () => {
     return signatureImporter.bip32Path === defaultBIP32Path;
   };
-}
+
+  const renderIndirectSignatureImporter = () => {
+    if (status === UNSUPPORTED) {
+      return (
+        <InteractionMessages
+          messages={interaction.messagesFor({ state: status })}
+          excludeCodes={["hermit.signature_request", "hermit.command"]}
+        />
+      );
+    }
+    return (
+      <Box mt={2}>
+        <Box mt={2}>
+          {renderDeviceConfirmInfo()}
+          <FormGroup>
+            <Signer
+              setError={setSignatureError}
+              hasError={hasBIP32PathError()}
+              onReceive={onReceive}
+              onReceivePSBT={onReceivePSBT}
+              interaction={interaction()}
+              setActive={setActive}
+              disableChangeMethod={disableChangeMethod}
+              extendedPublicKeyImporter={extendedPublicKeyImporter}
+            />
+
+            <FormHelperText error>{signatureError}</FormHelperText>
+
+            <InteractionMessages
+              messages={interaction.messagesFor({ state: status })}
+            />
+          </FormGroup>
+        </Box>
+      </Box>
+    );
+  };
+  return renderIndirectSignatureImporter();
+};
 
 IndirectSignatureImporter.propTypes = {
   network: PropTypes.string.isRequired,
